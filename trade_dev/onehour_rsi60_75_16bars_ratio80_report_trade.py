@@ -361,6 +361,7 @@ def run_onehour_trade_pipeline(pdf_path=None, max_workers=8, is_dry_run=True):
     print(f"\n★ 파이프라인 집행 완료! PDF 저장 위치: '{full_pdf_path}'", flush=True)
 
     # Google Drive 업로드
+    gdrive_url = None
     try:
         from upload_to_gdrive import upload_pdf_to_gdrive
         gdrive_url = upload_pdf_to_gdrive(full_pdf_path, folder_name="report_hour", user_email="hhokyung@gmail.com")
@@ -368,6 +369,13 @@ def run_onehour_trade_pipeline(pdf_path=None, max_workers=8, is_dry_run=True):
             print(f" -> Google Drive 업로드 완료 링크: {gdrive_url}", flush=True)
     except Exception as e:
         print(f"Google Drive 업로드 오류: {e}", flush=True)
+
+    # 이메일 알림 발송 (hhokyung@gmail.com)
+    try:
+        import email_notifier
+        email_notifier.send_hourly_trade_email(sold_items, bought_items, gdrive_url=gdrive_url, recipient_email="hhokyung@gmail.com")
+    except Exception as e:
+        print(f"이메일 알림 발송 중 오류: {e}", flush=True)
 
     return full_pdf_path
 

@@ -162,6 +162,7 @@ def generate_daily_trade_performance_report(target_date_str=None, pdf_path=None)
     print(f" -> 전일 매매 성과 PDF 생성 완료: '{full_pdf_path}'", flush=True)
 
     # Google Drive 업로드 (report_daily 폴더)
+    gdrive_url = None
     try:
         from upload_to_gdrive import upload_pdf_to_gdrive
         gdrive_url = upload_pdf_to_gdrive(full_pdf_path, folder_name="report_daily", user_email="hhokyung@gmail.com")
@@ -169,6 +170,13 @@ def generate_daily_trade_performance_report(target_date_str=None, pdf_path=None)
             print(f" -> Google Drive 업로드 완료 링크: {gdrive_url}", flush=True)
     except Exception as e:
         print(f"Google Drive 업로드 중 오류 발생: {e}", flush=True)
+
+    # 이메일 알림 발송 (hhokyung@gmail.com)
+    try:
+        import email_notifier
+        email_notifier.send_daily_performance_email(acc_summary=acc, sold_summary=summary, pdf_path=full_pdf_path, gdrive_url=gdrive_url, recipient_email="hhokyung@gmail.com")
+    except Exception as e:
+        print(f"이메일 알림 발송 중 오류: {e}", flush=True)
 
     return full_pdf_path
 

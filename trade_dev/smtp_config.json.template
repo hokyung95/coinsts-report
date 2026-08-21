@@ -1,0 +1,7 @@
+{
+    "smtp_server": "smtp.gmail.com",
+    "smtp_port": 587,
+    "sender_email": "hhokyung@gmail.com",
+    "sender_app_password": "penc cbzz wbyg axns",
+    "recipient_email": "hhokyung@gmail.com"
+}
