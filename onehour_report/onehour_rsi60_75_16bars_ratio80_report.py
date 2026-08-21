@@ -7,6 +7,7 @@
      ① 1시간봉 기준 최근 16개봉(N-15 ~ N) 중 RSI(14) 값이 60 이상 75 이하(60 <= RSI <= 75) 조건 만족 봉 수가 13개 이상(80% 이상)
      ② [직전 3개봉 저RSI 필터]: 16개봉 바로 이전 3개봉(N-18, N-17, N-16 / 17~19번째 봉)의 RSI(14) 값이 모두 60 이하(<= 60.0)일 것!
    - 체결가(Close) vs 일목균형표 전환선(9) 이격도 및 이탈 위치 정보를 포함한 코인별 듀얼 3단 시각화 PDF 리포트 생성
+   - [구글 드라이브 연동]: 생성된 PDF를 credentials.json 인증 정보를 통해 hhokyung@gmail.com 계정의 report_hour 폴더로 자동 업로드
    - **저장 위치**: onehour_report/report/onehour_rsi60_75_16bars_ratio80_report_YYYYMMDDHHMMSS.pdf
 ========================================================================================
 """
@@ -237,6 +238,7 @@ def plot_3tier_chart(axes_col, df, title_prefix, time_frame_label):
 def generate_onehour_rsi60_75_16bars_ratio80_pdf_report(pdf_path=None, max_workers=8):
     """
     1시간봉 최근 16개봉 RSI(14) 60~75 충족 봉 수 13개 이상(>=81.25%) AND 직전 3개봉(N-18~N-16) RSI <= 60 포착 코인 대상 PDF 리포트 생성
+    - 구글 드라이브 자동 업로드 연동 (credentials.json / hhokyung@gmail.com 계정 / report_hour 폴더)
     - PDF 저장 위치: onehour_report/report/onehour_rsi60_75_16bars_ratio80_report_YYYYMMDDHHMMSS.pdf
     """
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -370,9 +372,23 @@ def generate_onehour_rsi60_75_16bars_ratio80_pdf_report(pdf_path=None, max_worke
             plt.close(fig)
 
     full_pdf_path = os.path.abspath(pdf_path)
-    print(f"\n[3/3] 성공! 16봉 RSI(60~75) 13봉+ AND 직전3봉 RSI<=60 포착 코인 PDF 리포트 생성 완료!")
-    print(f" -> PDF 저장 위치: '{full_pdf_path}'")
+    print(f"\n[3/3] 성공! 1시간봉 최근 16개봉 RSI(60~75) 13봉+ AND 직전3봉 RSI<=60 포착 코인 PDF 리포트 생성 완료!", flush=True)
+    print(f" -> PDF 저장 위치: '{full_pdf_path}'", flush=True)
+
+    # 구글 드라이브 자동 업로드 (credentials.json / hhokyung@gmail.com 계정 / report_hour 폴더)
+    try:
+        root_dir = os.path.dirname(base_dir)
+        if root_dir not in sys.path:
+            sys.path.insert(0, root_dir)
+        from upload_to_gdrive import upload_pdf_to_gdrive
+        gdrive_url = upload_pdf_to_gdrive(full_pdf_path, folder_name="report_hour", user_email="hhokyung@gmail.com")
+        if gdrive_url:
+            print(f" -> 구글 드라이브 업로드 완료 링크: {gdrive_url}", flush=True)
+    except Exception as e:
+        print(f"구글 드라이브 업로드 수행 중 오류 발생: {e}", flush=True)
+
     return full_pdf_path
 
 if __name__ == "__main__":
     generate_onehour_rsi60_75_16bars_ratio80_pdf_report()
+

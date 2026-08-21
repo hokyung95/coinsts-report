@@ -9,16 +9,27 @@ from googleapiclient.http import MediaFileUpload
 # Google Drive API 접근 권한 (파일 읽기/쓰기/업로드)
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
-def get_gdrive_service(user_email="hhokyung@gmail.com", creds_json_path="credentials.json", token_json_path="token.json"):
+def get_gdrive_service(user_email="hhokyung@gmail.com", creds_json_path=None, token_json_path=None):
     """
     Google Drive API 서비스 객체 생성 및 인증 처리
     """
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    if creds_json_path is None:
+        creds_json_path = os.path.join(base_dir, "credentials.json")
+    elif not os.path.isabs(creds_json_path):
+        creds_json_path = os.path.join(base_dir, creds_json_path)
+
+    if token_json_path is None:
+        token_json_path = os.path.join(base_dir, "token.json")
+    elif not os.path.isabs(token_json_path):
+        token_json_path = os.path.join(base_dir, token_json_path)
+
     creds = None
     if os.path.exists(token_json_path):
         try:
             creds = Credentials.from_authorized_user_file(token_json_path, SCOPES)
         except Exception as e:
-            print(f"기존 token.json 로드 에러: {e}")
+            print(f"기존 token.json 로드 에러: {e}", flush=True)
 
     # 유효한 인증 정보가 없을 경우 인증 수행
     if not creds or not creds.valid:
@@ -26,25 +37,33 @@ def get_gdrive_service(user_email="hhokyung@gmail.com", creds_json_path="credent
             try:
                 creds.refresh(Request())
             except Exception as e:
-                print(f"토큰 갱신 에러: {e}")
+                print(f"토큰 갱신 실패 ({e}). 새 OAuth 인증을 시도합니다...", flush=True)
                 creds = None
 
         if not creds:
             if not os.path.exists(creds_json_path):
-                print("\n" + "!"*80)
-                print(f" [Google Drive API 인증 필요 안내] ")
-                print(f"계정 ({user_email})으로 구글 드라이브 업로드를 진행하려면 GCP 인증키가 필요합니다.")
-                print(f"1. Google Cloud Console에서 OAuth 2.0 데스크톱 클라이언트 JSON 키를 다운로드")
-                print(f"2. 해당 파일의 이름을 '{os.path.abspath(creds_json_path)}'로 저장해 주세요.")
-                print("!"*80 + "\n")
+                print("\n" + "!"*80, flush=True)
+                print(f" [Google Drive API 인증 필요 안내] ", flush=True)
+                print(f"계정 ({user_email})으로 구글 드라이브 업로드를 진행하려면 GCP 인증키가 필요합니다.", flush=True)
+                print(f"1. Google Cloud Console에서 OAuth 2.0 데스크톱 클라이언트 JSON 키를 다운로드", flush=True)
+                print(f"2. 해당 파일의 이름을 '{os.path.abspath(creds_json_path)}'로 저장해 주세요.", flush=True)
+                print("!"*80 + "\n", flush=True)
                 return None
 
-            flow = InstalledAppFlow.from_client_secrets_file(creds_json_path, SCOPES)
-            creds = flow.run_local_server(port=0)
+            try:
+                print(f"\n[Google Drive OAuth 인증 진행] 웹 브라우저에서 '{user_email}' 계정 로그인 및 승인을 완료해 주세요...", flush=True)
+                flow = InstalledAppFlow.from_client_secrets_file(creds_json_path, SCOPES)
+                creds = flow.run_local_server(port=0, open_browser=True, timeout_seconds=120)
+            except Exception as e:
+                print(f"Google Drive OAuth 인증 진행 실패/시간초과: {e}", flush=True)
+                return None
 
         # 토큰 저장
-        with open(token_json_path, 'w') as token_file:
-            token_file.write(creds.to_json())
+        try:
+            with open(token_json_path, 'w') as token_file:
+                token_file.write(creds.to_json())
+        except Exception as e:
+            print(f"token.json 저장 중 에러: {e}", flush=True)
 
     service = build('drive', 'v3', credentials=creds)
     return service
@@ -88,12 +107,12 @@ def upload_pdf_to_gdrive(pdf_file_path, folder_name="CoinSTS_Reports", user_emai
         'parents': [folder_id]
     }
 
-    media = MediaFileUpload(pdf_file_path, mimetype='application/pdf', resumable=True)
+    media = MediaFileUpload(pdf_file_path, mimetype='application/pdf', resumable=False)
 
-    print(f"구글 드라이브 업로드 시작 ({user_email} -> 폴더: '{folder_name}'): {file_name}")
+    print(f"구글 드라이브 업로드 시작 ({user_email} -> 폴더: '{folder_name}'): {file_name}", flush=True)
     file = service.files().create(body=file_metadata, media_body=media, fields='id, name, webViewLink').execute()
     
-    print(f"★ 구글 드라이브 업로드 완료!\n -> 파일명: {file.get('name')}\n -> 링크: {file.get('webViewLink')}")
+    print(f"★ 구글 드라이브 업로드 완료!\n -> 파일명: {file.get('name')}\n -> 링크: {file.get('webViewLink')}", flush=True)
     return file.get('webViewLink')
 
 if __name__ == "__main__":
